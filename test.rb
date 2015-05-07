@@ -36,18 +36,26 @@ class Tester
   end
 
   def create_edge_classes!
-    %w(ProvidesAt Contracted Specializes Accepts).each do |edge_name|
+    %w(Provides Contracted Specializes Accepts Located).each do |edge_name|
       client.create_class(edge_name, extends: 'E') unless client.class_exists?(edge_name)
     end
   end
 
   def create_vertexes!
     @professional = create_vertex('Professional', name: 'bob')
+    @chiropractor = create_vertex('Specialty', name: 'chiropractor')
+    @heart = create_vertex('Specialty', name: 'heart')
+    @insurance_plan = create_vertex('InsurancePlan', name: 'aetna')
+    @location = create_vertex('Location', lat: 40.6676395, long: -73.981716, zip: 11215, name: 'hospital-bk')
     @contract = create_vertex('Contract')
   end
 
   def create_edges!
-    create_edge('Contracted', from: @contract, to:@professional)
+    create_edge('Provides', from: @professional, to: @contract)
+    create_edge('Accepts', from: @contract, to: @insurance_plan)
+    create_edge('Specializes', from: @contract, to: @heart)
+    create_edge('Specializes', from: @contract, to: @chiropractor)
+    create_edge('Located', from: @contract, to: @location)
   end
 
 private
