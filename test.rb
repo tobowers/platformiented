@@ -1,5 +1,6 @@
 require 'orientdb4r'
 require 'pp'
+require 'pry'
 
 class Tester
 
@@ -16,6 +17,11 @@ class Tester
     create_edge_classes!
     create_vertexes!
     create_edges!
+    puts client.query("select expand(out('Specializes')) from Contract")
+    puts client.query(<<-EOL)
+      select count(both('Specializes').both('Provides')), name from Specialty where (both('Specializes').both('Accepts').name contains 'aetna') group by name
+    EOL
+    binding.pry
     client.disconnect
   end
 
@@ -53,7 +59,7 @@ class Tester
   def create_edges!
     create_edge('Provides', from: @professional, to: @contract)
     create_edge('Accepts', from: @contract, to: @insurance_plan)
-    create_edge('Specializes', from: @contract, to: @heart)
+    create_edge('Specializes', from: @contract, to: @heart, attributes: {board_certified: true})
     create_edge('Specializes', from: @contract, to: @chiropractor)
     create_edge('Located', from: @contract, to: @location)
   end
@@ -68,8 +74,14 @@ private
     CLIENT
   end
 
-  def create_edge(class_name, from:, to:)
-    client.command("CREATE EDGE #{class_name} FROM #{from} TO #{to}")
+  def create_edge(class_name, from:, to:, attributes:nil)
+    query = "CREATE EDGE #{class_name} FROM #{from} TO #{to}"
+    if attributes
+      #SQL injection!
+      attrs_query = attributes.map {|k,v| "#{k}=#{v.is_a?(String) ? "'#{v}'" : v}"}
+      query += " SET #{attrs_query.join(', ')}"
+    end
+    client.command(query)
   end
 
 
@@ -77,7 +89,7 @@ private
     query = "CREATE VERTEX #{class_name}"
     if attrs
       #SQL injection!
-      attrs_query = attrs.map {|k,v| "#{k}=#{v}"}
+      attrs_query = attrs.map {|k,v| "#{k}=#{v.is_a?(String) ? "'#{v}'" : v}"}
       query += " SET #{attrs_query.join(', ')}"
     end
     rid_from_results(client.command(query))
